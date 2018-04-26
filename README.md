@@ -15,7 +15,7 @@ This project therefore attempts to provide a classification system to identify g
 * python
 * numpy
 * scipy
-* matplotlab
+* matplotlib
 
 ## Citations
 
