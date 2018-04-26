@@ -66,6 +66,8 @@ def fourier_transform(rateMap, meanFr, spiketrain, dt, posx, posy):
     
     return fourierSpectrogram, polarSpectrogram, beforeMaxPower, maxPower, isPeriodic
 
+# Attempts to identify polar components by extracting connected areas from the polar
+# spectrogram
 def analyze_fourier(fourierSpectrogram, polarSpectrogram):
     dim = polarSpectrogram.shape
     yDim = dim[0]
@@ -112,6 +114,9 @@ def analyze_fourier(fourierSpectrogram, polarSpectrogram):
     
     return polarComponents
 
+# Calculates the average power along every radial line from the center of the 
+# polar spectrogram and identifies the local maxima of the average power 
+# distribution
 def analyze_polar_spectrogram(polarSpectrogram):
     dim = polarSpectrogram.shape
     yDim = dim[0]
@@ -124,6 +129,8 @@ def analyze_polar_spectrogram(polarSpectrogram):
     rhos = np.zeros(180)
     count = np.zeros(180)
     
+    # Only calculates the average power of the upper half of the polar 
+    # spectrogram due to the symmetry of 2D FFT
     for i in range(int(yDim / 2)):
         for j in range(int(xDim)):
             y = 128.5 - i
@@ -146,9 +153,10 @@ def analyze_polar_spectrogram(polarSpectrogram):
     
     localMaxima = signal.argrelextrema(rhoMeanPower, np.greater)[0]
     
+    # Delete local maxima within 10 degrees of a local maxima with a higher 
+    # average power
     cont = True
     i = 0
-    
     while cont:
         currTheta = localMaxima[i]
         currRho = rhoMeanPower[currTheta]
@@ -171,6 +179,8 @@ def analyze_polar_spectrogram(polarSpectrogram):
     
     return rhoMeanPower, localMaxima
 
+# Calculates the average power of rings of various radial sizes from the fourier 
+# spectrogram
 def analyze_fourier_rings(fourierSpectrogram, area):
     dim = fourierSpectrogram.shape
     yDim = dim[0]
@@ -195,7 +205,10 @@ def analyze_fourier_rings(fourierSpectrogram, area):
     
     return averageRingPower, radii
 
-# shuffle type can be either 'rate map' or 'spiketrain'
+# Calculates the average ring power of a random distribution of the fourier spectrogram.
+# The fourier spectrogram is either shuffled by randomly shuffling the rate map at a specified 
+# chunk size or by randomly shuffling the spike train. Variable shuffleType specified as either
+# 'rate map' or 'spiketrain'
 def fourier_rings_significance(rateMap, spiketrain, t1, t2, dt, posx, posy, shuffleType='rate map', chunkSize=1):
     maxRadius = math.floor(math.sqrt((256/2)**2 + (256/2)**2))
     shuffleAverageRingPower = np.empty((150, maxRadius))
