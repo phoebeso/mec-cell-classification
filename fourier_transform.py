@@ -163,9 +163,9 @@ def analyze_polar_spectrogram(polarSpectrogram):
         else:
             i += 1
         
-        if i == len(localMaxima):
+        if i == len(localMaxima) - 1:
             cont = False
-    
+
     localMaxima = localMaxima[:int(len(localMaxima)/2)]
     localMaxima = (localMaxima * math.pi) / 180
     
