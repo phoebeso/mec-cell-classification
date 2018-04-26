@@ -8,6 +8,8 @@ This project therefore attempts to provide a classification system to identify g
 
 ### Canonical Grid Scoring
 
+![](images/canonical_scoring_example.png)
+
 ### Two-Dimensional Fourier Transformation Scoring
 
 ## Requirements
