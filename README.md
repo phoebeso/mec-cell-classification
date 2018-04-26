@@ -19,6 +19,6 @@ This project therefore attempts to provide a classification system to identify g
 
 ## Citations
 
-Data was downloaded from the Kavli Institue for Systems Neuroscience. 
+Neuronal data was downloaded from the [Kavli Institue for Systems Neuroscience](https://www.ntnu.edu/kavli/research/grid-cell-data) Sargolini et al 2006 data set. 
 
 
