@@ -8,15 +8,26 @@ This project therefore attempts to provide a classification system to identify g
 
 ### Canonical Grid Scoring
 
-<p align="center">
-<img src="images/canonical_scoring_example.png" width="50%" height="50%">
-</p>
+Performs the established grid scoring methods, which includes analyzing the periodicity of the autocorrelation matrix's correlation curve. 
+
+<img src="images/canonical_scoring_example.png" width="40%" height="40%">
 
 ### Two-Dimensional Fourier Transformation Scoring
+
+Performs two-dimensional fourier transformation on the firing rate map in order to extract any significant periodict patterns. 
+
+<img src="images/grid-fourier.png" width="40%" height="40%">
+
+### Average Annulus Power Component Identification
+
+Identifies significant contributing components of the Fourier spectrogram by calculating the distribution of the average power of pixels within a defined annulus of various radial lengths and comparing this to the random distribution.
+
+<img src="images/average-ring-power.png" width="40%" height="40%">
 
 ## Requirements
 
 * python
+* math
 * numpy
 * scipy
 * matplotlib
