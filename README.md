@@ -14,7 +14,7 @@ Performs the established grid scoring methods, which includes analyzing the peri
 
 ### Two-Dimensional Fourier Transformation Scoring
 
-Performs two-dimensional fourier transformation on the firing rate map in order to extract any significant periodict patterns. 
+Extracts any significant periodict patterns from the firing rate map by utilizing the properties of two-dimensional Fourier transformations. 
 
 <img src="images/grid-fourier.png" width="40%" height="40%">
 
