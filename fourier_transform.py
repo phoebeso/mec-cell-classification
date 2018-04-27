@@ -258,6 +258,3 @@ def fourier_rings_significance(rateMap, spiketrain, t1, t2, dt, posx, posy, shuf
     confidenceInterval[1, :] = randomDistribution + marginError
     
     return randomDistribution, confidenceInterval, unsmoothShuffleRateMap, shuffleFourier
-
-    
-    
