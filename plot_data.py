@@ -124,14 +124,15 @@ def plot_ring_power(averageRingPower, radii, maxRadius, title):
 
 def plot_ring_random_distribution(randomDistribution, averageRingPower, radii, confidenceInterval, shuffleRateMap, shuffleFourier, maxRadius, chunkSize):
     radii = np.arange(0, maxRadius)
-    plt.plot(radii, randomDistribution)
-    plt.plot(radii, averageRingPower)
+    plt.plot(radii, randomDistribution, label="Random distribution")
+    plt.plot(radii, averageRingPower, label="Average power distribution")
     ax = plt.gca()
     ax.fill_between(radii, confidenceInterval[0], confidenceInterval[1], alpha=0.4)
     plt.title('Random distribution with rate map shuffling with chunk size = ' + str(chunkSize))
     plt.xlabel('Inner Radius Length')
     plt.ylabel('Average Power')
     plt.xlim(0, maxRadius)
+    plt.legend()
     plt.show()
 
     plt.subplot(1, 2, 1)

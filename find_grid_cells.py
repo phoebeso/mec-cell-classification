@@ -10,7 +10,7 @@ from calculate_correlation_matrix import calculate_correlation_matrix
 from analyze_periodicity import analyze_periodicity
 from fourier_transform import fourier_transform, analyze_fourier, analyze_fourier_rings, analyze_polar_spectrogram
 
-files = os.listdir('./SargoliniMoser2006')
+files = os.listdir('./data')
 
 boxSize = 100
 nPosBins = 20
