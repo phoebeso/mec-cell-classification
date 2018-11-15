@@ -1,11 +1,12 @@
 import numpy as np
 import math
+import seaborn as sns
 import matplotlib.pyplot as plt
 
 def plot_canonical_scoring_method(smoothRateMap, correlationMatrix, rotations, correlations, gridScore, circularMatrix, threshold):
     displayCircularMatrix = np.copy(circularMatrix)
     displayCircularMatrix[np.where(np.isnan(displayCircularMatrix))] = -1
-
+    
     plt.figure(figsize=(10,10))
 
     ax1 = plt.subplot(2, 2, 1)
@@ -30,9 +31,10 @@ def plot_canonical_scoring_method(smoothRateMap, correlationMatrix, rotations, c
     ax4 = plt.subplot(2, 2, 4)
     ax4.set_title('Periodicity')
     plt.plot(rotations, correlations)
-    plt.xlabel('Correlation\nGrid Score: ' + str(gridScore))
-    plt.ylabel('Rotation (deg)')
+    plt.ylabel('Correlation')
+    plt.xlabel('Rotation (deg)\nGrid Score: ' + str(gridScore))
     plt.xlim(0, 360)
+    # if np.min(correlations)
     plt.ylim(np.min(correlations), 1)
     
     plt.tight_layout()
