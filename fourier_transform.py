@@ -15,16 +15,17 @@ from calculate_2d_tuning_curve import calculate_2d_tuning_curve
 from shuffle_rate_map import shuffle_rate_map
 
 def fourier_transform(rateMap, meanFr, spiketrain, dt, posx, posy):
-    fourierSpectrogram = np.fft.fft2(rateMap, s=[256, 256])
-    beforeMaxPower = np.max(np.absolute(np.fft.fftshift(fourierSpectrogram)))
+    adjustedRateMap = rateMap - meanFr
+    adjustedRateMap[np.where(np.isnan(adjustedRateMap))] = 0 
     
+    fourierSpectrogram = np.fft.fft2(adjustedRateMap, s=[256, 256])
     fourierSpectrogram = fourierSpectrogram / (meanFr * math.sqrt(rateMap.shape[0] * rateMap.shape[1]))
     fourierSpectrogram = np.fft.fftshift(fourierSpectrogram)
     fourierSpectrogram = np.absolute(fourierSpectrogram)
     
     maxPower = np.max(fourierSpectrogram)
     
-    shiftedMaxPowers = np.empty([150, 1])
+    shiftedPowers = np.empty([150, 65536])
     for i in range(150):
         minShift = math.ceil(20 / dt)
         maxShift = len(spiketrain) - (20 / dt)
@@ -34,30 +35,32 @@ def fourier_transform(rateMap, meanFr, spiketrain, dt, posx, posy):
         shiftedFiringRate = np.reshape(shiftedSpiketrain / dt, (len(shiftedSpiketrain), 1))
         
         unsmoothShiftedRateMap, smoothShiftedRateMap = calculate_2d_tuning_curve(posx, posy, shiftedFiringRate, 20, 0, 100)
-        unsmoothShiftedRateMap = unsmoothShiftedRateMap - np.nanmean(unsmoothShiftedRateMap)
-        
+        unsmoothShiftedRateMap = unsmoothShiftedRateMap - meanFr
         unsmoothShiftedRateMap[np.where(np.isnan(unsmoothShiftedRateMap))] = 0
         
         shiftedFourier = np.fft.fft2(unsmoothShiftedRateMap, s=[256, 256])
         shiftedFourier = shiftedFourier / (meanFr * math.sqrt(unsmoothShiftedRateMap.shape[0] * unsmoothShiftedRateMap.shape[1]))
         shiftedFourier = np.absolute(np.fft.fftshift(shiftedFourier))
-        shiftedMaxPowers[i] = np.max(shiftedFourier)
+        shiftedFourier = shiftedFourier.reshape(-1)
+        shiftedPowers[i] = shiftedFourier
     
-    sigPercentile = np.percentile(shiftedMaxPowers, 95)
+    sigPercentile = np.percentile(shiftedPowers, 95)
     if (maxPower > sigPercentile):
         isPeriodic = True
     else:
         isPeriodic = False
         
-    threshold1 = np.percentile(shiftedMaxPowers, 50)
+    threshold1 = np.percentile(shiftedPowers, 50)
     polarSpectrogram = fourierSpectrogram - threshold1
     polarSpectrogram[np.where(polarSpectrogram < 0)] = 0
     
+    # main components is used to generate the polar graph of the average power along each
+    # radial angle (aka the flower looking polar graph)
     threshold2 = np.max(polarSpectrogram) * 0.1
     mainComponents = np.copy(polarSpectrogram)
     mainComponents[np.where(mainComponents < threshold2)] = 0
     
-    return fourierSpectrogram, polarSpectrogram, beforeMaxPower, maxPower, isPeriodic
+    return fourierSpectrogram, polarSpectrogram, maxPower, isPeriodic
 
 # Attempts to identify polar components by extracting connected areas from the polar
 # spectrogram
@@ -201,10 +204,10 @@ def analyze_fourier_rings(spectrogram, area):
     return averageRingPower, radii
 
 # Spiketrain is randomly suffled 150 times and the max power of the shifted fourier is calculated.
-# Polar spectrograms are found by subtracting the 50th percentile of the max power of the randomly
+# Polar spectrograms are found by subtracting the 50th percentile of the power of the randomly
 # generated fourier spectrograms. 
 def calculate_polar_threshold(meanFr, spiketrain, dt, posx, posy):
-    shiftedMaxPowers = np.empty([150, 1])
+    shiftedPowers = np.empty([150, 65536])
     for i in range(150):
         minShift = math.ceil(20 / dt)
         maxShift = len(spiketrain) - (20 / dt)
@@ -213,51 +216,35 @@ def calculate_polar_threshold(meanFr, spiketrain, dt, posx, posy):
         shiftedSpiketrain = np.roll(spiketrain, randShift)
         shiftedFiringRate = np.reshape(shiftedSpiketrain / dt, (len(shiftedSpiketrain), 1))
         
-        unsmoothShiftedRateMap, smoothShiftedRateMap = calculate_2d_tuning_curve(posx, posy, shiftedFiringRate, 20, 0, 100)
-        unsmoothShiftedRateMap = unsmoothShiftedRateMap - np.nanmean(unsmoothShiftedRateMap)
-        
+        unsmoothShiftedRateMap, _ = calculate_2d_tuning_curve(posx, posy, shiftedFiringRate, 20, 0, 100)
+        unsmoothShiftedRateMap = unsmoothShiftedRateMap - meanFr
         unsmoothShiftedRateMap[np.where(np.isnan(unsmoothShiftedRateMap))] = 0
         
         shiftedFourier = np.fft.fft2(unsmoothShiftedRateMap, s=[256, 256])
         shiftedFourier = shiftedFourier / (meanFr * math.sqrt(unsmoothShiftedRateMap.shape[0] * unsmoothShiftedRateMap.shape[1]))
         shiftedFourier = np.absolute(np.fft.fftshift(shiftedFourier))
-        shiftedMaxPowers[i] = np.max(shiftedFourier)
+        shiftedFourier = shiftedFourier.reshape(-1)
+        shiftedPowers[i] = shiftedFourier
         
-    threshold = np.percentile(shiftedMaxPowers, 50)
+    threshold = np.percentile(shiftedPowers, 50)
     return threshold
 
 # Calculates the average ring power of a random distribution of the fourier spectrogram.
 # The fourier spectrogram is either shuffled by randomly shuffling the rate map at a specified 
 # chunk size or by randomly shuffling the spike train. Variable shuffleType specified as either
 # 'rate map' or 'spiketrain'
-def fourier_rings_significance(rateMap, spiketrain, t1, dt, posx, posy, area, t2=None, shuffleType='rate map', chunkSize=1):
+def fourier_rings_significance(rateMap, spiketrain, meanFr, dt, posx, posy, area, shuffleType='rate map', chunkSize=1):
     maxRadius = math.ceil((area / (4 * math.pi)) - 1)
     shuffleAverageRingPower = np.empty((150, maxRadius))
-    unsmoothShuffleRateMap, shufflePolar = None, None
     
-    if not np.any(t2):
-        meanFr = np.sum(spiketrain) / t1[-1]
-    else:
-        meanFr = np.sum(spiketrain) / (t1[-1] + t2[-1])
     threshold = calculate_polar_threshold(meanFr, spiketrain, dt, posx, posy)
     
     for i in range(150):
         if (shuffleType == 'rate map'): 
             # Shuffle rate map pixels to determine random distribution
             unsmoothShuffleRateMap = shuffle_rate_map(rateMap, chunkSize)
-            
-            shuffleFourier = np.fft.fft2(unsmoothShuffleRateMap, s=[256, 256])
-            shuffleFourier = shuffleFourier / (meanFr * math.sqrt(rateMap.shape[0] * rateMap.shape[1]))
-            shuffleFourier = np.fft.fftshift(shuffleFourier)
-            shuffleFourier = np.absolute(shuffleFourier)
-            
-            shufflePolar = shuffleFourier - threshold
-            shufflePolar[np.where(shufflePolar < 0)] = 0
-                        
-            averageRingPower, radii = analyze_fourier_rings(shufflePolar, area)
-            averageRingPower = np.reshape(averageRingPower, (1, maxRadius))
-    
-            shuffleAverageRingPower[i, :] = averageRingPower
+            unsmoothShuffleRateMap = unsmoothShuffleRateMap - meanFr
+            unsmoothShuffleRateMap[np.where(np.isnan(unsmoothShuffleRateMap))] = 0
         
         elif (shuffleType == 'spiketrain'):
         # Shuffle spiketrain to determine random distribution 
@@ -269,28 +256,20 @@ def fourier_rings_significance(rateMap, spiketrain, t1, dt, posx, posy, area, t2
             shiftedFiringRate = np.reshape(shiftedSpiketrain / dt, (len(shiftedSpiketrain), 1))
             
             unsmoothShuffleRateMap, _ = calculate_2d_tuning_curve(posx, posy, shiftedFiringRate, 20, 0, 100)
-            unsmoothShuffleRateMap = unsmoothShuffleRateMap - np.nanmean(unsmoothShuffleRateMap)
-            
+            unsmoothShuffleRateMap = unsmoothShuffleRateMap - meanFr
             unsmoothShuffleRateMap[np.where(np.isnan(unsmoothShuffleRateMap))] = 0
+
+        shuffleFourier = np.fft.fft2(unsmoothShuffleRateMap, s=[256, 256])
+        shuffleFourier = shuffleFourier / (meanFr * math.sqrt(rateMap.shape[0] * rateMap.shape[1]))
+        shuffleFourier = np.fft.fftshift(shuffleFourier)
+        shuffleFourier = np.absolute(shuffleFourier)
+                        
+        shufflePolar = shuffleFourier - threshold
+        shufflePolar[np.where(shufflePolar < 0)] = 0
+                        
+        averageRingPower, radii = analyze_fourier_rings(shufflePolar, area)
+        averageRingPower = np.reshape(averageRingPower, (1, maxRadius))
             
-            shuffleFourier = np.fft.fft2(unsmoothShuffleRateMap, s=[256, 256])
-            shuffleFourier = shuffleFourier / (meanFr * math.sqrt(rateMap.shape[0] * rateMap.shape[1]))
-            shuffleFourier = np.fft.fftshift(shuffleFourier)
-            shuffleFourier = np.absolute(shuffleFourier)
-            
-            shufflePolar = shuffleFourier - threshold
-            shufflePolar[np.where(shufflePolar < 0)] = 0
-            
-            averageRingPower, radii = analyze_fourier_rings(shufflePolar, area)
-            averageRingPower = np.reshape(averageRingPower, (1, maxRadius))
-            
-            shuffleAverageRingPower[i, :] = averageRingPower
-    
-    randomDistribution = np.mean(shuffleAverageRingPower, axis=0)
-    standardDeviation = np.std(shuffleAverageRingPower, axis=0)
-    marginError = 1.976 * (standardDeviation / math.sqrt(150))
-    confidenceInterval = np.empty((2, maxRadius))
-    confidenceInterval[0, :] = randomDistribution - marginError
-    confidenceInterval[1, :] = randomDistribution + marginError
-    
-    return randomDistribution, confidenceInterval, unsmoothShuffleRateMap, shufflePolar
+        shuffleAverageRingPower[i, :] = averageRingPower
+
+    return shuffleAverageRingPower
